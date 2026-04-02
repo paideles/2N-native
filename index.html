@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tradutor PRO</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #111;
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+textarea {
+    width: 90%;
+    height: 100px;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+    background: #00ff88;
+    font-weight: bold;
+}
+
+.card {
+    background: #222;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🌍 Tradutor PRO</h2>
+
+<textarea id="inputText" placeholder="Digite ou fale em inglês"></textarea>
+
+<br>
+
+<button onclick="traduzir()">Traduzir</button>
+<button onclick="ativarMicrofone()">🎤 Falar</button>
+<button onclick="ouvirInglesInput()">🔊 Ouvir Inglês</button>
+
+<textarea id="outputText" readonly placeholder="Tradução"></textarea>
+
+<br>
+
+<button onclick="ouvirPortuguesInput()">🔊 Ouvir Português</button>
+
+<h3>📚 Histórico (Offline)</h3>
+<div id="historico"></div>
+
+<script>
+
+// ================= TRADUÇÃO =================
+async function traduzir() {
+    let texto = inputText.value;
+
+    if (!texto) return alert("Digite algo!");
+
+    let res = await fetch("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(texto) + "&langpair=en|pt");
+    let data = await res.json();
+
+    let traducao = data.responseData.translatedText;
+
+    outputText.value = traducao;
+
+    salvar(texto, traducao);
+}
+
+// ================= MICROFONE =================
+function ativarMicrofone() {
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("Sem suporte 😢");
+        return;
+    }
+
+    let rec = new SpeechRecognition();
+    rec.lang = "en-US";
+
+    rec.start();
+
+    rec.onresult = function(e) {
+        let texto = e.results[0][0].transcript;
+        inputText.value = texto;
+        traduzir();
+    };
+}
+
+// ================= SALVAR =================
+function salvar(ingles, portugues) {
+
+    let lista = JSON.parse(localStorage.getItem("dados")) || [];
+
+    let item = {
+        en: ingles,
+        pt: portugues,
+        data: new Date().toLocaleString()
+    };
+
+    lista.unshift(item);
+
+    localStorage.setItem("dados", JSON.stringify(lista));
+
+    carregar();
+}
+
+// ================= MOSTRAR =================
+function carregar() {
+    let lista = JSON.parse(localStorage.getItem("dados")) || [];
+
+    historico.innerHTML = "";
+
+    lista.forEach((item, i) => {
+        historico.innerHTML += `
+        <div class="card">
+            <b>🇺🇸 ${item.en}</b><br>
+            🇧🇷 ${item.pt}<br><br>
+            <button onclick="ouvirIngles(${i})">🔊 Inglês</button>
+            <button onclick="ouvirPortugues(${i})">🔊 Português</button>
+        </div>
+        `;
+    });
+}
+
+// ================= OUVIR INPUT =================
+function ouvirInglesInput() {
+    let speech = new SpeechSynthesisUtterance(inputText.value);
+    speech.lang = "en-US";
+    speechSynthesis.speak(speech);
+}
+
+function ouvirPortuguesInput() {
+    let speech = new SpeechSynthesisUtterance(outputText.value);
+    speech.lang = "pt-BR";
+    speechSynthesis.speak(speech);
+}
+
+// ================= OUVIR HISTÓRICO =================
+function ouvirIngles(i) {
+    let lista = JSON.parse(localStorage.getItem("dados"));
+    let speech = new SpeechSynthesisUtterance(lista[i].en);
+    speech.lang = "en-US";
+    speechSynthesis.speak(speech);
+}
+
+function ouvirPortugues(i) {
+    let lista = JSON.parse(localStorage.getItem("dados"));
+    let speech = new SpeechSynthesisUtterance(lista[i].pt);
+    speech.lang = "pt-BR";
+    speechSynthesis.speak(speech);
+}
+
+// carregar ao abrir
+carregar();
+
+</script>
+
+</body>
+</html>
